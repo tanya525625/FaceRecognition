@@ -2,22 +2,17 @@ import os
 
 import cv2
 import numpy as np
+from scipy.fftpack import dct
+from sklearn.preprocessing import StandardScaler
+import pywt
+from scipy.signal import cwt, ricker
 
 from FaceRecognizer import FaceRecognizer
+from tools import detect_face
+import image_preprocessing_functions as ipf
 
 
-def detect_face(img):
-    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    face_cascade = cv2.CascadeClassifier(os.path.join(cv2.haarcascades, "haarcascade_frontalface_default.xml"))
-    faces = face_cascade.detectMultiScale(gray_img, scaleFactor=1.2, minNeighbors=5)
-    if len(faces) == 0:
-        return None, None
-
-    x, y, w, h = faces[0]
-    return gray_img[y:y + w, x:x + h], faces[0]
-
-
-def make_db(path_to_dataset):
+def make_db(path_to_dataset, is_detection=False):
     people = {}
 
     for images_dir in os.listdir(path_to_dataset):
@@ -27,9 +22,12 @@ def make_db(path_to_dataset):
             for image_path_name in os.listdir(dir_paths):
                 image_path = os.path.join(dir_paths, image_path_name)
                 image = cv2.imread(image_path)
-                face, rect = detect_face(image)
-                if face is not None:
-                    faces.append(face)
+                if is_detection:
+                    face, rect = detect_face(image)
+                    if face is not None:
+                        faces.append(face)
+                else:
+                    faces.append(image)
                     # cv2.imshow("Training on image...", face)
                     # cv2.waitKey(100)
             person = f'person_{images_dir.replace("s", "")}'
@@ -51,6 +49,17 @@ def train_and_test_split(dataset, proportion):
     return X_train, y_train, X_test, y_test
 
 
+def find_accuracy(X_test, y_test, recognizer):
+    right_predictions_count = 0
+    all_values_count = len(y_test)
+    for test_img, test_person in zip(X_test, y_test):
+        prediction = recognizer.predict(test_img)
+        if prediction == test_person:
+            right_predictions_count += 1
+
+    return right_predictions_count/all_values_count * 100
+
+
 if __name__ == "__main__":
     path_to_db = "orl_faces"
 
@@ -64,6 +73,26 @@ if __name__ == "__main__":
         'ranges': [0, 256]
     }
 
-    recognizer = FaceRecognizer(cv2.calcHist, hist_args)
-    recognizer.fit(X_train, y_train)
+    dft_args = {
+        'norm': 'ortho'
+    }
 
+    dct_args = {}
+    scaler_args = {}
+    widths = np.arange(1, 31)
+    dwt_args = {
+        'wavelet': 'bior1.3'
+    }
+    gradient_args = {
+        'ddepth': cv2.CV_64F,
+        'dx': 1,
+        'dy': 0
+    }
+
+
+    feature_extraction_methods = [cv2.calcHist, np.fft.fft, dct, pywt.dwt, cv2.Sobel]
+    preprocessing_methods = [ipf.hist_preprocessing, ipf.dct_preprocessing, ipf.scaler_preprocessing]
+    recognizer = FaceRecognizer(pywt.dwt, ipf.scaler_preprocessing, dwt_args)
+    recognizer.fit(X_train, y_train)
+    accuracy = find_accuracy(X_test, y_test, recognizer)
+    print(accuracy)
