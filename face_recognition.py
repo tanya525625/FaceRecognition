@@ -3,9 +3,7 @@ import os
 import cv2
 import numpy as np
 from scipy.fftpack import dct
-from sklearn.preprocessing import StandardScaler
 import pywt
-from scipy.signal import cwt, ricker
 
 from FaceRecognizer import FaceRecognizer
 from tools import detect_face
@@ -88,7 +86,6 @@ if __name__ == "__main__":
         'dx': 1,
         'dy': 0
     }
-
 
     feature_extraction_methods = [cv2.calcHist, np.fft.fft, dct, pywt.dwt, cv2.Sobel]
     preprocessing_methods = [ipf.hist_preprocessing, ipf.dct_preprocessing, ipf.scaler_preprocessing]
