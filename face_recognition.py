@@ -1,4 +1,5 @@
 import os
+import random
 
 import cv2
 import numpy as np
@@ -20,6 +21,7 @@ def make_db(path_to_dataset, is_detection=False):
             for image_path_name in os.listdir(dir_paths):
                 image_path = os.path.join(dir_paths, image_path_name)
                 image = cv2.imread(image_path)
+                # image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
                 if is_detection:
                     face, rect = detect_face(image)
                     if face is not None:
@@ -58,12 +60,46 @@ def find_accuracy(X_test, y_test, recognizer):
     return right_predictions_count/all_values_count * 100
 
 
+def find_point_on_line(x, k, x_0=0):
+    return x_0 + k*x
+
+
+def generate_random_points(img_shape, poins_count, epsilon=40):
+    coord_x = []
+    coord_y = []
+    x0_values = [0, 50, 0, 0]
+    k_values = [1, -1, 0.1, 10]
+    for i in range(poins_count):
+        x = random.randint(0, img_shape[0] - 1)
+        for k, x0 in zip(k_values, x0_values):
+            y = find_point_on_line(x, k, x0)
+            if y - epsilon < 0 or y + epsilon < 0:
+                continue
+            else:
+                y = random.randint(int(y - epsilon), int(y + epsilon))
+                if y < img_shape[1]:
+                    coord_y.append(y)
+                    coord_x.append(x)
+
+    return list(zip(coord_x, coord_y))
+
+
+def random_method(img, coordinate_points):
+    print(len(coordinate_points))
+    return [img[point[0]][point[1]][color] for point in coordinate_points for color in range(3)]
+
+
 if __name__ == "__main__":
     path_to_db = "orl_faces"
 
     db = make_db(path_to_db)
+
     proportion = 0.6
     X_train, y_train, X_test, y_test = train_and_test_split(db, proportion)
+    img_shape = np.array(X_train[0]).shape
+    points_count = 300
+    random_coordinates = generate_random_points(img_shape, points_count)
+
     hist_args = {
         'channels': [0],
         'mask': None,
@@ -75,9 +111,10 @@ if __name__ == "__main__":
         'norm': 'ortho'
     }
 
+    random_args = {'coordinate_points': random_coordinates}
+
     dct_args = {}
     scaler_args = {}
-    widths = np.arange(1, 31)
     dwt_args = {
         'wavelet': 'bior1.3'
     }
@@ -87,9 +124,13 @@ if __name__ == "__main__":
         'dy': 0
     }
 
-    feature_extraction_methods = [cv2.calcHist, np.fft.fft, dct, pywt.dwt, cv2.Sobel]
-    preprocessing_methods = [ipf.hist_preprocessing, ipf.dct_preprocessing, ipf.scaler_preprocessing]
-    recognizer = FaceRecognizer(pywt.dwt, ipf.scaler_preprocessing, dwt_args)
+    window_args = {'window_size': 3}
+
+    feature_extraction_methods = [cv2.calcHist, np.fft.fft, dct, pywt.dwt, ipf.sliding_window_method]
+    preprocessing_methods = [ipf.hist_preprocessing, ipf.dct_preprocessing, ipf.scaler_preprocessing,
+                             ipf.scaler_preprocessing, ipf.scaler_preprocessing]
+    args =
+    recognizer = FaceRecognizer(random_method, ipf.scaler_preprocessing, random_args)
     recognizer.fit(X_train, y_train)
     accuracy = find_accuracy(X_test, y_test, recognizer)
     print(accuracy)

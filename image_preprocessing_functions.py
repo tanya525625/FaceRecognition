@@ -1,7 +1,7 @@
-import cv2
 import numpy as np
 
 from sklearn.preprocessing import StandardScaler
+from FaceRecognizer import _find_vectors_distance
 
 
 def hist_preprocessing(img):
@@ -27,3 +27,16 @@ def scaler(img):
         img[:, i, :] = scalers[i].fit_transform(img[:, i, :])
 
     return img
+
+
+def find_gradient_distance(row_1, row_2):
+    return abs(np.gradient(row_1) - np.gradient(row_2))
+
+
+def sliding_window_method(img, window_size):
+    vectors = []
+    img_shape = img.shape
+    for row_ind in range(window_size, img_shape[0]-window_size):
+        vectors.append(_find_vectors_distance(img[row_ind - window_size], img[row_ind + window_size]))
+
+    return vectors

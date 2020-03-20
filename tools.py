@@ -12,3 +12,4 @@ def detect_face(img):
 
     x, y, w, h = faces[0]
     return gray_img[y:y + w, x:x + h], faces[0]
+
