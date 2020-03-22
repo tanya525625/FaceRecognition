@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 from scipy.fftpack import dct
 import pywt
+from matplotlib import pyplot as plt
 
 from FaceRecognizer import FaceRecognizer
 from tools import detect_face
@@ -21,7 +22,7 @@ def make_db(path_to_dataset, is_detection=False):
             for image_path_name in os.listdir(dir_paths):
                 image_path = os.path.join(dir_paths, image_path_name)
                 image = cv2.imread(image_path)
-                # image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
                 if is_detection:
                     face, rect = detect_face(image)
                     if face is not None:
@@ -53,7 +54,10 @@ def find_accuracy(X_test, y_test, recognizer):
     right_predictions_count = 0
     all_values_count = len(y_test)
     for test_img, test_person in zip(X_test, y_test):
+        # print(test_img)
+        # print(recognizer.X_train)
         prediction = recognizer.predict(test_img)
+
         if prediction == test_person:
             right_predictions_count += 1
 
@@ -85,52 +89,119 @@ def generate_random_points(img_shape, poins_count, epsilon=40):
 
 
 def random_method(img, coordinate_points):
-    print(len(coordinate_points))
     return [img[point[0]][point[1]][color] for point in coordinate_points for color in range(3)]
 
 
 if __name__ == "__main__":
     path_to_db = "orl_faces"
+    param_graphs_path = "parameters_investigation_graphs"
+    size_invest_path = "dataset_size_investigation"
 
     db = make_db(path_to_db)
 
-    proportion = 0.6
+    proportion = 0.8
     X_train, y_train, X_test, y_test = train_and_test_split(db, proportion)
-    img_shape = np.array(X_train[0]).shape
-    points_count = 300
-    random_coordinates = generate_random_points(img_shape, points_count)
+    # img_shape = np.array(X_train[0]).shape
+    # points_count = 300
+    # random_coordinates = generate_random_points(img_shape, points_count)
 
+    hist_par_args = {}
     hist_args = {
-        'channels': [0],
-        'mask': None,
-        'histSize': [256],
-        'ranges': [0, 256]
+        'histSize': [[x] for x in range(10, 257, 20)],
+        "const_args": {
+            'channels': [0],
+            'mask': None,
+            'ranges': [0, 256]
+        }
     }
-
     dft_args = {
-        'norm': 'ortho'
+        's': [[x] for x in range(10, 200, 50)],
+        "const_args": None
     }
 
-    random_args = {'coordinate_points': random_coordinates}
+    # random_args = {'coordinate_points': random_coordinates}
 
-    dct_args = {}
-    scaler_args = {}
+    dct_args = {
+        'n': range(1, 15),
+        "const_args": None
+    }
+    #scaler_args = {}
     dwt_args = {
-        'wavelet': 'bior1.3'
+        'wavelet': ['bior1.3', 'db1'],
+        "const_args": None
     }
-    gradient_args = {
-        'ddepth': cv2.CV_64F,
-        'dx': 1,
-        'dy': 0
+    # gradient_args = {
+    #     'ddepth': cv2.CV_64F,
+    #     'dx': 1,
+    #     'dy': 0
+    # }
+
+    window_args = {
+        'window_size': range(1, 21, 1),
+        "const_args": None
     }
 
-    window_args = {'window_size': 3}
+    scaler_args = {
+        'area': range(1, 21, 1),
+        "const_args": None
+    }
 
-    feature_extraction_methods = [cv2.calcHist, np.fft.fft, dct, pywt.dwt, ipf.sliding_window_method]
+    feature_extraction_methods = [cv2.calcHist, np.fft.fft2, dct, pywt.dwt, ipf.sliding_window_method]
+    feature_extraction_methods = [ipf.scaler_method]
     preprocessing_methods = [ipf.hist_preprocessing, ipf.dct_preprocessing, ipf.scaler_preprocessing,
                              ipf.scaler_preprocessing, ipf.scaler_preprocessing]
-    args =
-    recognizer = FaceRecognizer(random_method, ipf.scaler_preprocessing, random_args)
-    recognizer.fit(X_train, y_train)
-    accuracy = find_accuracy(X_test, y_test, recognizer)
-    print(accuracy)
+    preprocessing_methods = [ipf.scaler_preprocessing]
+    args = [hist_args, dft_args, dct_args, dwt_args, window_args]
+    args = [scaler_args]
+
+    for feat_extr_meth, prepr_meth, par in zip(feature_extraction_methods, preprocessing_methods, args):
+        accuracy_values = []
+        for arg in list(par.values())[0]:
+            arg_dict = {list(par.keys())[0]: arg}
+            if par["const_args"] is not None:
+                arg_dict.update(par["const_args"])
+            recognizer = FaceRecognizer(feat_extr_meth, prepr_meth, arg_dict)
+            recognizer.fit(X_train, y_train)
+            #print(recognizer.X_train)
+            # print(feat_extr_meth.__name__)
+            accuracy = find_accuracy(X_test, y_test, recognizer)
+
+            accuracy_values.append(accuracy)
+
+        best_param = list(par.values())[0][np.argmax(accuracy_values)]
+        print(max(accuracy_values))
+        print(best_param)
+        plt.plot(list(par.values())[0], accuracy_values)
+        file_path = os.path.join(param_graphs_path, feat_extr_meth.__name__)
+        plt.grid()
+        plt.savefig(file_path)
+        plt.clf()
+
+    best_param = 7
+    proportions = [0.2, 0.4, 0.6, 0.8]
+    accuracy_values = []
+
+    for feat_extr_meth, prepr_meth, par in zip(feature_extraction_methods, preprocessing_methods, args):
+        arg_dict = {list(par.keys())[0]: best_param}
+        if par["const_args"] is not None:
+            arg_dict.update(par["const_args"])
+        for proportion in proportions:
+            X_train, y_train, X_test, y_test = train_and_test_split(db, proportion)
+            recognizer = FaceRecognizer(feat_extr_meth, prepr_meth, arg_dict)
+            recognizer.fit(X_train, y_train)
+            #print(recognizer.X_train)
+            accuracy = find_accuracy(X_test, y_test, recognizer)
+            accuracy_values.append(accuracy)
+
+        best_value = max(accuracy_values)
+        print(best_value)
+        train_imgs_count = list(map(lambda x: int(x * 10), proportions))
+        plt.plot(train_imgs_count, accuracy_values)
+        file_path = os.path.join(size_invest_path, feat_extr_meth.__name__)
+        plt.grid()
+        plt.savefig(file_path)
+        plt.clf()
+
+
+
+

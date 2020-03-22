@@ -40,3 +40,14 @@ def sliding_window_method(img, window_size):
         vectors.append(_find_vectors_distance(img[row_ind - window_size], img[row_ind + window_size]))
 
     return vectors
+
+
+def scaler_method(img, area):
+    vectors = []
+    for row_ind, col_ind in zip(range(0, img.shape[0] - area, area), range(0, img.shape[1] - area, area)):
+        values = []
+        for offset in range(area):
+            values.append(img[row_ind + offset][col_ind + offset])
+        vectors.append(np.mean(values))
+
+    return vectors

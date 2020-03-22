@@ -10,6 +10,7 @@ class FaceRecognizer:
         self.X_train, self.y_train = [], []
 
     def fit(self, X_train, y_train):
+
         self.X_train = _prepare_dataset(X_train, self.feature_extraction_method, self.method_args, self.prepr_function)
         self.y_train = y_train
         # make_hist_plot(X_train[0])
@@ -17,6 +18,7 @@ class FaceRecognizer:
     def predict(self, img):
         img_test = _prepare_dataset([img], self.feature_extraction_method, self.method_args, self.prepr_function)
         distances = [_find_vectors_distance(img_test, train_img) for train_img in self.X_train]
+        #print(distances)
         return self.y_train[np.argmin(distances)]
 
 
