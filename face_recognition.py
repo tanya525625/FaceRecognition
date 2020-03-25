@@ -100,7 +100,3 @@ if __name__ == "__main__":
         images_path = "predictions"
 
         inv_func.person_recognition_example(db, proportion, feature_extraction_methods, args, images_path)
-
-
-
-
