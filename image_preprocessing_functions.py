@@ -1,39 +1,14 @@
 import numpy as np
+import cv2
 
-from sklearn.preprocessing import StandardScaler
 from FaceRecognizer import _find_vectors_distance
 
 
-def hist_preprocessing(img):
-    return [img]
+def hist(img, histSize, channels, mask, ranges):
+    return cv2.calcHist([img], histSize=histSize, channels=channels, mask=mask, ranges=ranges)
 
 
-def dft_preprocessing(img):
-    return np.float32(img)
-
-
-def dct_preprocessing(img):
-    return img[0]
-
-
-def scaler_preprocessing(img):
-    return img
-
-
-def scaler(img):
-    scalers = {}
-    for i in range(img.shape[1]):
-        scalers[i] = StandardScaler()
-        img[:, i, :] = scalers[i].fit_transform(img[:, i, :])
-
-    return img
-
-
-def find_gradient_distance(row_1, row_2):
-    return abs(np.gradient(row_1) - np.gradient(row_2))
-
-
-def sliding_window_method(img, window_size):
+def sliding_window(img, window_size):
     vectors = []
     img_shape = img.shape
     for row_ind in range(window_size, img_shape[0]-window_size):
@@ -42,7 +17,7 @@ def sliding_window_method(img, window_size):
     return vectors
 
 
-def scaler_method(img, area):
+def scaler(img, area):
     vectors = []
     for row_ind, col_ind in zip(range(0, img.shape[0] - area, area), range(0, img.shape[1] - area, area)):
         values = []
@@ -51,3 +26,14 @@ def scaler_method(img, area):
         vectors.append(np.mean(values))
 
     return vectors
+
+
+def dft(image, p):
+    s = [p, p]
+    image = np.fft.fft2(image, s=s)
+
+    return image
+
+
+def find_gradient_distance(row_1, row_2):
+    return abs(np.gradient(row_1) - np.gradient(row_2))

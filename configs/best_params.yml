@@ -1,0 +1,16 @@
+dct:
+  best_accuracy: 94.375
+  best_param: 90
+dft:
+  best_accuracy: 93.75
+  best_param: 120
+hist:
+  best_accuracy: 97.5
+  best_param:
+  - 30
+scaler:
+  best_accuracy: 70.625
+  best_param: 5
+sliding_window:
+  best_accuracy: 82.5
+  best_param: 2
