@@ -102,7 +102,7 @@ if __name__ == "__main__":
         best_window_args = {'window_size': 2}
         best_args = [best_hist_args, best_dft_args, best_dct_args, best_scaler_args, best_window_args]
         if voter_investigation_mode:
-            accuracies = [1, 0.4, 0.4, 0.5, 0.7]
+            accuracies = [1, 0.45, 0.45, 0.4, 0.8]
             best_params = [[30], 120, 90, 7, 2]
             inv_func.voter_investigation(db, feature_extraction_methods, args, best_args, proportions,
                                          best_params, voter_inv_config_path, voter_inv_path, accuracies)

@@ -146,38 +146,38 @@ def voter_investigation(db, feature_extraction_methods, args, best_args, proport
     config_dict = {}
     fig, ax = plt.subplots()
     train_imgs_count = list(map(lambda x: int(x * 10), proportions))
-
-    for feat_extr_meth, par, best_param in zip(feature_extraction_methods, args, best_params):
-        arg_dict = {list(par.keys())[0]: best_param}
-        if par["const_args"] is not None:
-            arg_dict.update(par["const_args"])
-
-        accuracy_values = []
-        for proportion in proportions:
-            X_train, y_train, X_test, y_test = train_and_test_split(db, proportion)
-            recognizer = FaceRecognizer(feat_extr_meth, arg_dict)
-            recognizer.fit(X_train, y_train)
-            accuracy = find_accuracy(X_test, y_test, recognizer)
-            accuracy_values.append(accuracy)
-
-        method_name = feat_extr_meth.__name__
-        method_dict = {
-            method_name: {
-                'best_param': proportions[np.argmax(accuracy_values)],
-                'best_accuracy': max(accuracy_values)
-            }
-        }
-        config_dict.update(method_dict)
-        with open(config_path, 'w') as f:
-            yaml.dump(config_dict, f)
+    #
+    # for feat_extr_meth, par, best_param in zip(feature_extraction_methods, args, best_params):
+    #     arg_dict = {list(par.keys())[0]: best_param}
+    #     if par["const_args"] is not None:
+    #         arg_dict.update(par["const_args"])
+    #
+    #     accuracy_values = []
+    #     for proportion in proportions:
+    #         X_train, y_train, X_test, y_test = train_and_test_split(db, proportion)
+    #         recognizer = FaceRecognizer(feat_extr_meth, arg_dict)
+    #         recognizer.fit(X_train, y_train)
+    #         accuracy = find_accuracy(X_test, y_test, recognizer)
+    #         accuracy_values.append(accuracy)
+    #
+    #     method_name = feat_extr_meth.__name__
+    #     method_dict = {
+    #         method_name: {
+    #             'best_param': proportions[np.argmax(accuracy_values)],
+    #             'best_accuracy': max(accuracy_values)
+    #         }
+    #     }
+    #     config_dict.update(method_dict)
+    #     with open(config_path, 'w') as f:
+    #         yaml.dump(config_dict, f)
 
         # fig = make_plot_for_voting_comparison(train_imgs_count, accuracy_values,
         #                                       method_name, "Comparison with voting method", fig, ax)
-        print(f"Dataset size investigation for {method_name} is done")
+        # print(f"Dataset size investigation for {method_name} is done")
 
-    voting_recognizer = VoteRecognizer(feature_extraction_methods, accuracies, best_args)
     voting_accuracies = []
     for proportion in proportions:
+        voting_recognizer = VoteRecognizer(feature_extraction_methods, accuracies, best_args)
         X_train, y_train, X_test, y_test = train_and_test_split(db, proportion)
         voting_recognizer.fit(X_train, y_train)
         voting_accuracies.append(find_accuracy(X_test, y_test, voting_recognizer))
