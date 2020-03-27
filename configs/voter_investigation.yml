@@ -1,3 +1,6 @@
+Voter:
+  best_accuracy: 95.0
+  best_param: 0.9
 dct:
   best_accuracy: 97.5
   best_param: 0.8
@@ -8,7 +11,7 @@ hist:
   best_accuracy: 100.0
   best_param: 0.7
 scaler:
-  best_accuracy: 80.0
+  best_accuracy: 83.75
   best_param: 0.8
 sliding_window:
   best_accuracy: 85.0

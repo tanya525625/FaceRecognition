@@ -5,7 +5,7 @@ import yaml
 import numpy as np
 from matplotlib import pyplot as plt
 
-from FaceRecognizer import FaceRecognizer
+from FaceRecognizer import FaceRecognizer, VoteRecognizer
 
 
 def person_recognition_example(db, proportion, feature_extraction_methods, args, images_path):
@@ -129,7 +129,6 @@ def find_accuracy(X_test, y_test, recognizer):
     all_values_count = len(y_test)
     for test_img, test_person in zip(X_test, y_test):
         prediction = recognizer.predict(test_img)
-
         if prediction[0] == test_person:
             right_predictions_count += 1
 
@@ -140,3 +139,72 @@ def show_image(img, title):
     cv2.imshow(title, img)
     cv2.namedWindow(title)
     cv2.waitKey()
+
+
+def voter_investigation(db, feature_extraction_methods, args, best_args, proportions,
+                        best_params, config_path, graph_path, accuracies):
+    config_dict = {}
+    fig, ax = plt.subplots()
+    train_imgs_count = list(map(lambda x: int(x * 10), proportions))
+
+    for feat_extr_meth, par, best_param in zip(feature_extraction_methods, args, best_params):
+        arg_dict = {list(par.keys())[0]: best_param}
+        if par["const_args"] is not None:
+            arg_dict.update(par["const_args"])
+
+        accuracy_values = []
+        for proportion in proportions:
+            X_train, y_train, X_test, y_test = train_and_test_split(db, proportion)
+            recognizer = FaceRecognizer(feat_extr_meth, arg_dict)
+            recognizer.fit(X_train, y_train)
+            accuracy = find_accuracy(X_test, y_test, recognizer)
+            accuracy_values.append(accuracy)
+
+        method_name = feat_extr_meth.__name__
+        method_dict = {
+            method_name: {
+                'best_param': proportions[np.argmax(accuracy_values)],
+                'best_accuracy': max(accuracy_values)
+            }
+        }
+        config_dict.update(method_dict)
+        with open(config_path, 'w') as f:
+            yaml.dump(config_dict, f)
+
+        # fig = make_plot_for_voting_comparison(train_imgs_count, accuracy_values,
+        #                                       method_name, "Comparison with voting method", fig, ax)
+        print(f"Dataset size investigation for {method_name} is done")
+
+    voting_recognizer = VoteRecognizer(feature_extraction_methods, accuracies, best_args)
+    voting_accuracies = []
+    for proportion in proportions:
+        X_train, y_train, X_test, y_test = train_and_test_split(db, proportion)
+        voting_recognizer.fit(X_train, y_train)
+        voting_accuracies.append(find_accuracy(X_test, y_test, voting_recognizer))
+    print(f"Dataset size investigation for voting method is done")
+    method_dict = {
+        "Voter": {
+            'best_param': proportions[np.argmax(voting_accuracies)],
+            'best_accuracy': max(voting_accuracies)
+        }
+    }
+    config_dict.update(method_dict)
+    with open(config_path, 'w') as f:
+        yaml.dump(config_dict, f)
+
+    fig = make_plot_for_voting_comparison(train_imgs_count, voting_accuracies,
+                                          "voting method", "Voting method", fig, ax)
+
+    # ax.legend(["Hist", "DFT", "DCT", "Sc-Scale", "Sliding window", "Voting method"])
+    graph_path = os.path.join(graph_path, "voting_graphs.png")
+    fig.savefig(graph_path)
+
+
+def make_plot_for_voting_comparison(x, y, method_name, investigation_type, fig, ax):
+    ax.set_xlabel("parameter")
+    ax.set_ylabel("accuracy")
+    ax.title.set_text(f"{investigation_type}")
+    ax.plot(x, y, label=method_name)
+    ax.grid()
+
+    return fig
